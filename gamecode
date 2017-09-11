@@ -1,0 +1,300 @@
+#include<stdio.h>
+#include<graphics.h>
+#include<string.h>
+#include<time.h>
+#include<Windows.h>
+#include<conio.h>
+#include<mmsystem.h>
+#pragma comment(lib,"WINMM.lib")
+
+
+IMAGE background_begin,background_go, trap_thorn,trap_thorn1, trap_shell,trap_shell1;
+
+IMAGE now_runner;
+
+int bg_loop;//定义背景循环次数
+int bg_ChangeWidth = 20;//定义背景改变宽度
+int img_num=1;//定义人物循环次数
+int upordown;//定义起跳和下蹲，值分别为1和2，默认0为不变
+int img_top = 400;
+int x = 20;
+int barr;//出现障碍物
+int barr_img_num;
+int i_value;//用于存放scene_change里的i值
+int gamestatus = 1;//.游戏状态1为生0为死
+int score_i;//计分
+int boom_interval = 800;//定义炮弹像素间隔
+int begin = 500;//定义炮弹开始i的值
+bool BLboom = true;//定义是否出现炮弹
+int boom_position=1000;
+//炮弹位移
+
+typedef struct mystruct
+{
+	int x;
+	int y;
+}runner_position;
+
+//void Thread1();
+void drawgame();
+void scene_change();
+//void startgame();
+void endgame();
+void run();
+void up();
+void userInput();
+void barrierImg(int a,int b,int c,int d);
+void gameover();
+void score();
+void boom();//咸鱼导弹来袭
+
+
+int main() {
+	/*HANDLE hThread1;
+	DWORD ThreadID1;
+	hThread1 = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)scene_change, NULL, 0, &ThreadID1);//执行背景图像改变线程
+	SuspendThread(hThread1);
+	drawgame();
+	Sleep(1000);
+	//FlushMouseMsgBuffer();
+	//MOUSEMSG m;
+	//m = GetMouseMsg();
+	drawgame();
+	HANDLE hThread2;
+	DWORD ThreadID2;
+	hThread2 = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)scene_change, NULL, 0, &ThreadID2);//游戏人物run线程
+	Sleep(100);
+	*/
+	drawgame();
+	srand((unsigned)time(NULL));
+	if (MouseHit() == true) {
+		Sleep(2000);
+		initgraph(1000, 600);
+		//ResumeThread(hThread1);
+		scene_change();
+	}
+	else {
+		Sleep(5000);
+		initgraph(1000, 600);
+		//ResumeThread(hThread1);
+		scene_change();
+	}
+	EndBatchDraw();
+	//startgame();//开始游戏操作(包括死亡重玩)
+	endgame();//游戏结束释放空间
+	return 0;
+}
+
+void drawgame() {
+	initgraph(1000, 600);
+	BeginBatchDraw();//批量绘制，一次性画出背景图
+	loadimage(&background_begin, _T("picture//start_screen.jpg"));
+	putimage(0, 0, 1000, 600, &background_begin,0,0 );
+	EndBatchDraw();
+}
+
+void scene_change() {
+	mciSendString(LPCSTR("open hope.mp3 alias bgm"), NULL, 0, NULL);
+	mciSendString(LPCSTR("play bgm repeat"), NULL, 0, NULL);
+	BeginBatchDraw();
+	for (int i = 0; i <= 40000; i +=bg_ChangeWidth ) {
+		loadimage(&background_go, "picture//season.jpg");
+		putimage(0, 0, 1000, 600, &background_go, i, 0);
+		score_i = i;
+		score();
+		//putimage(0, 0, 1000, 600, &background_go, i+100, 0);
+		//FlushBatchDraw();
+		//i_value = i;
+		
+		if (begin == i || (begin + boom_interval) == i) { BLboom = true; }
+			while (BLboom = true) { boom(); break; }
+			//boom_interval+=23;
+			if (boom_interval == 40000) { boom_interval = 500; }
+		
+		for (int j = 1; j <= 20; ++j) { 
+			if (i == j * 2000) { 
+				barr = 1; 
+			}
+		}
+
+		if (barr == 1) {
+			switch (barr_img_num)
+			{
+			case 0:barrierImg( 30, 55, 140, 25); break;
+			case 1:barrierImg( 30, 135, 140, 35); break;
+			case 2:barrierImg( 30, 215, 140, 40); break;
+			case 3:barrierImg( 245, 40, 140, 45); break;
+			case 4:barrierImg( 245, 120, 140, 50); break;
+			case 5:barrierImg( 245, 200, 140, 55); break;
+			case 6:barrierImg( 30, 280, 140, 60); break;
+			case 7:barrierImg( 30, 340, 140, 85); break;
+			case 8:barrierImg( 30, 280, 140, 60); break;
+			case 9:barrierImg( 245, 200, 140, 55); break;
+			case 10:barrierImg( 245, 120, 140, 50); break;
+			case 11:barrierImg( 245, 40, 140, 45); break;
+			case 12:barrierImg( 30, 215, 140, 40); break;
+			case 13:barrierImg( 30, 135, 140, 35); break;
+			}
+			++barr_img_num;
+			if (barr_img_num == 13) { barr_img_num = 0; }
+			if (i <= 2000) {
+				i_value = i-(i/1000)*1000;
+				if (i_value == 1000) { barr = 0; }
+			}
+			else if (i > 2000 || i_value<10000) {
+				i_value = i - (i / 1000) * 1000;
+				if (i_value == 1000) { barr = 0; }
+			}
+			else if (i >= 10000) {
+				i_value = i - (i / 10000) * 10000;
+				if (i_value == 1000) { barr = 0; }
+			}
+		}
+		//FlushBatchDraw();
+		 
+		//控制人物移动
+		userInput();
+		//if (_kbhit()) {
+			switch (upordown)
+			{
+			case 0:run(); break;
+			case 1:up(); break;
+			default:
+				break;
+			}
+			//upordown = 0;
+	//	}
+		
+		//人物移动
+			FlushBatchDraw();
+			while ((1000 - i_value) == 400) {
+				if (img_top <= 300) {
+					gamestatus = 1; break;
+				}
+				else {
+					gamestatus = 0; break;
+				}
+			}
+			while (boom_position == 400) {
+				if (img_top <= 300) {
+					gamestatus = 1; break;
+				}
+				else {
+					gamestatus = 0; break;
+				}
+			}
+			if (gamestatus == 0) {
+				gameover();
+			}
+		//背景进入循环
+		if (39000 == i) {
+			++bg_loop;
+			bg_ChangeWidth += 5;
+			scene_change();
+			}
+		}
+	}
+
+void userInput() {
+	if (_kbhit()) {
+		char input = _getch();
+		if (input == 'w') {
+			upordown = 1;
+		}
+		else {
+			upordown = 0;
+		}
+	}
+}
+void run() {
+	IMAGE runner, runner1;
+	now_runner = runner1;
+	TCHAR s[50], s1[50];
+	wsprintf(s, _T("picture//kupao-%d.jpg"), img_num);
+	wsprintf(s1, _T("picture//kupao%d.jpg"), img_num);
+	loadimage(&runner, s);
+	loadimage(&runner1, s1);
+	putimage(400, 400, 123, 105, &runner, 0, 0, SRCAND);;
+	putimage(400, 400, 123, 105, &runner1, 0, 0, SRCPAINT);
+	Sleep(10);
+	++img_num;
+	if (img_num == 12) { img_num = 1; }
+}
+
+
+void up() {
+	IMAGE runner, runner1,modern;
+	TCHAR s[50], s1[50];
+	now_runner = runner1;
+	wsprintf(s, _T("picture//kupao-%d.jpg"), img_num);
+	wsprintf(s1, _T("picture//kupao%d.jpg"), img_num);
+	loadimage(&runner, s);
+	loadimage(&runner1, s1);
+	putimage(400, img_top, 123, 105, &runner, 0, 0, SRCAND);
+	putimage(400, img_top, 123, 105, &runner1, 0, 0, SRCPAINT);
+	img_top-=x;
+	if (img_top == 240) { x = -20; }
+	if (img_top == 400) { upordown = 0; x = 20; }
+	Sleep(10);
+	
+}
+void barrierImg(int a,int b, int c,int d) {
+	loadimage(&trap_thorn, "picture//trap.jpg");
+	loadimage(&trap_thorn1, "picture//trap_1.jpg");
+	putimage(1000 - i_value , 450, c, d, &trap_thorn1, a, b, SRCAND);
+	putimage(1000 - i_value , 450, c, d, &trap_thorn, a, b, SRCPAINT);
+	
+}
+
+void boom() {
+	loadimage(&trap_shell, "picture//boom.jpg");
+	loadimage(&trap_shell1, "picture//boom1.jpg");
+	int x = (rand() % 100 + 400);
+	putimage((boom_position), x , 120, 56, &trap_shell1, 0, 0, SRCAND);
+	putimage((boom_position), x , 120, 56, &trap_shell, 0, 0, SRCPAINT);
+	boom_position -= 20;
+	if (boom_position == 0) {
+		boom_position = 1000;
+		BLboom = false;
+		boom_interval += 1500;
+	}
+}//炮弹位置
+void score() {
+	settextcolor(RGB(255, 0, 0));
+	settextstyle(25, 0, _T("黑体"));
+	TCHAR sum[50];
+	wsprintf(sum, _T("目前得分：%d"), score_i);
+	outtextxy(0, 0, sum);
+}
+
+void gameover() {
+	loadimage(NULL, "picture//clearscreen.jpg");
+	setbkmode(TRANSPARENT);
+	Sleep(10);
+	mciSendString("stop bgm", NULL, 0, NULL);
+	mciSendString("close bgm", NULL, 0, NULL);
+	Sleep(100);
+	mciSendString(LPCSTR("open baby.mp3 alias bgmm"), NULL, 0, NULL);
+	mciSendString(LPCSTR("play bgmm"), NULL, 0, NULL);
+	settextcolor(RGB(255, 0, 0));
+	settextstyle(25, 0, _T("黑体"));
+	TCHAR ssum[50];
+	wsprintf(ssum, _T("最终得分：%d"), score_i);
+	outtextxy(0, 0,ssum);
+	//TCHAR s[50];
+	//wsprintf(s, _T("GAME OVER"));
+	//outtextxy(10, 60, s);
+	//outtextxy(400 , 200, s);
+	//RECT r = { 0, 0, 1000, 600 };
+	//drawtext(_T("GAME OVER"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+	
+	Sleep(5000);
+	endgame();
+}
+
+
+void endgame() {
+	//system("pause");
+	_getch();
+	closegraph();
+}
